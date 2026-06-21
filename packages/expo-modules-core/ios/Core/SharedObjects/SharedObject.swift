@@ -83,6 +83,29 @@ open class SharedObject: AnySharedObject {
   public func emit<P: AnyArgument>(event: String, arguments: sending P) {
     emit(event: event, payload: arguments)
   }
+
+  // MARK: - Macro-synthesized JSI hooks
+
+  /// Binds the class's `@JS` members directly onto its JavaScript prototype, overridden by the
+  /// `@SharedObject` macro. Core calls it when building the class so the synthesized accessors are
+  /// installed alongside the DSL-described surface. Framework-internal (leading underscore). Declared as
+  /// an overridable class method (rather than a protocol requirement) so dispatch resolves per concrete
+  /// subclass: an inherited `AnySharedObject` conformance would lock the witness to this base class.
+  /// Classes that don't use the macro inherit this no-op.
+  @JavaScriptActor
+  open class func _decorateSharedObject(prototype: borrowing JavaScriptObject, in runtime: JavaScriptRuntime, appContext: AppContext) throws {
+    // No-op by default — only `@SharedObject`-macro classes override this.
+  }
+
+  /// Builds a native instance from the JS constructor arguments, overridden by the `@SharedObject` macro
+  /// from the class's single `@JS init(...)`. Core calls it from the constructor closure and pairs the
+  /// returned instance with the JS `this`. Framework-internal (leading underscore). The macro's override
+  /// returns the freshly built instance; this base default returns `nil`, which keeps the DSL
+  /// `Constructor { … }` path for classes without a `@JS init`.
+  @JavaScriptActor
+  open class func _constructSharedObject(this: JavaScriptValue, arguments: borrowing JavaScriptValuesBuffer, in runtime: JavaScriptRuntime, appContext: AppContext) throws -> SharedObject? {
+    return nil
+  }
 }
 
 extension SharedObject: EventEmitter {

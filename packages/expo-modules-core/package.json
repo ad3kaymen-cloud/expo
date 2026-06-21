@@ -74,7 +74,7 @@
   "license": "MIT",
   "homepage": "https://github.com/expo/expo/tree/main/packages/expo-modules-core",
   "dependencies": {
-    "@expo/expo-modules-macros-plugin": "0.3.0",
+    "@expo/expo-modules-macros-plugin": "0.5.1",
     "expo-modules-jsi": "workspace:~56.0.7",
     "invariant": "^2.2.4"
   },

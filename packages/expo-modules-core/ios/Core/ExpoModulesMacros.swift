@@ -100,6 +100,12 @@ public macro ExpoModule(_ name: String? = nil, classes: [Any.Type] = []) =
 /// The companion `@ExpoModule(classes: [Foo.self])` wires the class into the module's
 /// exposed surface.
 ///
+/// `@JS` methods and properties are bound directly onto the class prototype by an override of
+/// `_decorateSharedObject(prototype:in:appContext:)`, and a single `@JS init(...)` becomes an override
+/// of `_constructSharedObject(this:arguments:in:appContext:)` that builds the native instance from the
+/// JS arguments. Core calls both when building the class, so the synthesized `Class(…)` block carries
+/// no DSL entries for the `@JS` members.
+///
 /// Usage:
 ///
 ///     @SharedObject
@@ -113,7 +119,10 @@ public macro ExpoModule(_ name: String? = nil, classes: [Any.Type] = []) =
 ///       @JS
 ///       var size: Int { 42 }
 ///     }
-@attached(member, names: named(_synthesizedClassDefinition))
+@attached(
+  member,
+  names:
+    named(_synthesizedClassDefinition), named(_decorateSharedObject), named(_constructSharedObject))
 @attached(memberAttribute)
 public macro SharedObject(_ name: String? = nil) =
   #externalMacro(module: "ExpoModulesMacros", type: "SharedObjectMacro")
