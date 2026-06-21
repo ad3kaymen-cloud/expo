@@ -122,6 +122,7 @@ export enum CalendarIdentifier {
   /** Ethiopic calendar, Amete Mihret (epoch approx, 8 C.E.) */
   ETHIOPIC = 'ethiopic',
   /** Gregorian calendar */
+  // oxlint-disable-next-line typescript/no-duplicate-enum-values
   GREGORY = 'gregory',
   /** Gregorian calendar (alias) */
   GREGORIAN = 'gregory',
