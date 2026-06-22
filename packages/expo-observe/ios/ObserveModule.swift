@@ -10,6 +10,10 @@ internal struct Config: Record {
   @Field var dispatchingEnabled: Bool?
   @Field var dispatchInDebug: Bool?
   @Field var sampleRate: Double?
+  // Per-integration opt-in flags, forwarded verbatim to JS subscribers via the `onConfigure`
+  // event. Values are loosely typed (`Bool` or a nested config object) and owned by each
+  // integration library, so this stays `[String: Any]`.
+  @Field var integrations: [String: Any]?
 }
 
 internal struct BundleDefaults: Record {
@@ -18,8 +22,15 @@ internal struct BundleDefaults: Record {
 }
 
 public final class ObserveModule: Module {
+  // The most recent `integrations` config. Read by `getIntegrations()` so a subscriber that
+  // attaches after `configure(...)` (e.g. an image view mounted after boot-time configure) can
+  // pick up the current state without waiting for the next event. Accessed only on the JS thread.
+  private var lastIntegrations: [String: Any] = [:]
+
   public func definition() -> ModuleDefinition {
     Name("ExpoObserve")
+
+    Events("onConfigure")
 
     OnCreate {
       // The observability manager needs to know the project id. Currently it's available only through `expo-constants`,
@@ -49,6 +60,14 @@ public final class ObserveModule: Module {
           AppMetrics.setEnvironment(resolvedEnvironment)
         }
       }
+
+      // Broadcast the integrations config so integration libraries (e.g. expo-image) can activate.
+      self.lastIntegrations = config.integrations ?? [:]
+      self.sendEvent("onConfigure", ["integrations": self.lastIntegrations])
+    }
+
+    Function("getIntegrations") {
+      return self.lastIntegrations
     }
 
     Function("setBundleDefaults") { (defaults: BundleDefaults) in

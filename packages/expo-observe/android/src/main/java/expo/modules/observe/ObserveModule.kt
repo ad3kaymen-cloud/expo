@@ -17,7 +17,11 @@ class Config(
   @Field val environment: String? = null,
   @Field val dispatchingEnabled: Boolean? = null,
   @Field val dispatchInDebug: Boolean? = null,
-  @Field val sampleRate: Double? = null
+  @Field val sampleRate: Double? = null,
+  // Per-integration opt-in flags, forwarded verbatim to JS subscribers via the `onConfigure`
+  // event. Values are loosely typed (boolean or a nested config object) and owned by each
+  // integration library, so this stays a free-form map.
+  @Field val integrations: Map<String, Any?>? = null
 ) : Record
 
 @OptimizedRecord
@@ -33,9 +37,16 @@ class ObserveModule : Module() {
   private lateinit var observabilityManager: ObservabilityManager
   private lateinit var appMetricsModule: AppMetricsModule
 
+  // The most recent `integrations` config. Read by `getIntegrations()` so a subscriber that
+  // attaches after `configure(...)` (e.g. an image view mounted after boot-time configure) can
+  // pick up the current state without waiting for the next event. Accessed only on the JS thread.
+  private var lastIntegrations: Map<String, Any?> = emptyMap()
+
   override fun definition() =
     ModuleDefinition {
       Name("ExpoObserve")
+
+      Events("onConfigure")
 
       OnCreate {
         appMetricsModule = checkNotNull(appContext.registry.getModule<AppMetricsModule>()) {
@@ -72,6 +83,14 @@ class ObserveModule : Module() {
         val resolvedEnvironment = config.environment
           ?: ObservePreferences.getBundleDefaults(context)?.environment
         resolvedEnvironment?.let { appMetricsModule.setEnvironment(it) }
+
+        // Broadcast the integrations config so integration libraries (e.g. expo-image) can activate.
+        lastIntegrations = config.integrations ?: emptyMap()
+        this@ObserveModule.sendEvent("onConfigure", mapOf("integrations" to lastIntegrations))
+      }
+
+      Function("getIntegrations") {
+        lastIntegrations
       }
 
       Function("setBundleDefaults") { defaults: BundleDefaults ->
