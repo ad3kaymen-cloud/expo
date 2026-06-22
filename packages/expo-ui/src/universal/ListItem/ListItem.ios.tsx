@@ -1,5 +1,5 @@
 import { Button, HStack, Spacer, Text, VStack } from '@expo/ui/swift-ui';
-import { buttonStyle, contentShape, foregroundStyle, shapes } from '@expo/ui/swift-ui/modifiers';
+import { contentShape, foregroundStyle, shapes } from '@expo/ui/swift-ui/modifiers';
 import { Children, type ReactNode } from 'react';
 
 import { extractListItemSlots } from './ListItemSlots';
@@ -24,7 +24,6 @@ function renderSupporting(node: ReactNode): ReactNode {
 
 /**
  * iOS implementation of `ListItem`.
- * Wraps a plain SwiftUI `Button` and applies `contentShape(.rectangle())` so the full row rectangle registers taps, including the gap between slots.
  */
 export function ListItem(props: ListItemProps) {
   const {
@@ -41,7 +40,7 @@ export function ListItem(props: ListItemProps) {
   const supporting = slots.supporting ?? supportingText;
 
   return (
-    <Button onPress={onPress} modifiers={[buttonStyle('plain')]} testID={testID}>
+    <Button onPress={onPress} testID={testID}>
       <HStack alignment="center" spacing={12} modifiers={[contentShape(shapes.rectangle())]}>
         {wrapStrings(leading)}
         <VStack alignment="leading" spacing={2}>
