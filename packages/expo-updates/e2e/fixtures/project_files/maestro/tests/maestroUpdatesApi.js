@@ -1,6 +1,7 @@
 /**
  * These are functions that only run within the Maestro JS environment.
  */
+// oxlint-disable no-var, object-shorthand
 const serverBaseUrl = 'http://localhost:' + MAESTRO_UPDATES_SERVER_PORT;
 
 function serveManifest(name, platform, channel) {
