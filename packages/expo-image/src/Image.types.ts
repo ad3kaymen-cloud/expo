@@ -10,6 +10,7 @@ import type {
 } from 'react-native';
 import type { SFSymbol } from 'sf-symbols-typescript';
 
+import type { ExpoImageIntegrationConfig } from './observe';
 import type ExpoImage from './ExpoImage';
 
 export type ImageSource = {
@@ -871,3 +872,14 @@ export type ImageCacheConfig = {
    */
   maxMemoryCount?: number;
 };
+
+// Register the `'expo-image'` key on expo-observe's open `ObserveIntegrationsConfig` interface via
+// declaration merging, so `Observe.configure({ integrations: { 'expo-image': ... } })` is suggested
+// and type-checked. The config type itself lives in `observe.ts` (imported at the top of this file);
+// this augmentation lives here because `Image.types.ts` is always part of the package's public type
+// graph, so it is picked up whenever expo-image is imported.
+declare module 'expo-observe' {
+  interface ObserveIntegrationsConfig {
+    'expo-image'?: boolean | ExpoImageIntegrationConfig;
+  }
+}

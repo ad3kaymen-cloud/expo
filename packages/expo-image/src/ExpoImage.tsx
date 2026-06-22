@@ -1,7 +1,7 @@
 import { requireNativeViewManager } from 'expo-modules-core';
 import React from 'react';
-import type { NativeSyntheticEvent } from 'react-native';
-import { StyleSheet, Platform, processColor } from 'react-native';
+import type { LayoutChangeEvent, NativeSyntheticEvent } from 'react-native';
+import { PixelRatio, StyleSheet, Platform, processColor } from 'react-native';
 
 import type {
   ImageErrorEventData,
@@ -9,6 +9,7 @@ import type {
   ImageNativeProps,
   ImageProgressEventData,
 } from './Image.types';
+import { reportIfOversized } from './observe';
 
 const NativeExpoImage = requireNativeViewManager('ExpoImage');
 
@@ -34,14 +35,46 @@ class ExpoImage extends React.PureComponent<ImageNativeProps> {
   unlockResourceAsync!: () => Promise<void>;
   reloadAsync!: () => Promise<void>;
 
+  // Latest decoded size (from `onLoad`, pixels) and rendered box (from `onLayout`, dp). The two
+  // events fire independently and in either order, so we keep both and check on whichever arrives
+  // second — and again on later layout changes — to detect images decoded larger than displayed.
+  private decodedSize: { url: string; width: number; height: number } | null = null;
+  private layoutSize: { width: number; height: number } | null = null;
+
   onLoadStart = () => {
     this.props.onLoadStart?.();
   };
 
   onLoad = (event: NativeSyntheticEvent<ImageLoadEventData>) => {
+    const { source } = event.nativeEvent;
+    this.decodedSize = { url: source.url, width: source.width, height: source.height };
+    this.maybeReportOversized();
     this.props.onLoad?.(withDeprecatedNativeEvent(event));
     this.onLoadEnd();
   };
+
+  onLayout = (event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    this.layoutSize = { width, height };
+    this.props.onLayout?.(event);
+    this.maybeReportOversized();
+  };
+
+  // Reports once both sizes are known. `onLayout` gives the box in dp; multiplying by the screen's
+  // pixel ratio yields device pixels, matching the decoded pixel size for the ratio comparison.
+  private maybeReportOversized() {
+    if (!this.decodedSize || !this.layoutSize) {
+      return;
+    }
+    const scale = PixelRatio.get();
+    reportIfOversized({
+      url: this.decodedSize.url,
+      decodedWidth: this.decodedSize.width,
+      decodedHeight: this.decodedSize.height,
+      displayWidth: this.layoutSize.width * scale,
+      displayHeight: this.layoutSize.height * scale,
+    });
+  }
 
   onProgress = (event: NativeSyntheticEvent<ImageProgressEventData>) => {
     this.props.onProgress?.(withDeprecatedNativeEvent(event));
@@ -105,6 +138,7 @@ class ExpoImage extends React.PureComponent<ImageNativeProps> {
         style={resolvedStyle}
         onLoadStart={this.onLoadStart}
         onLoad={this.onLoad}
+        onLayout={this.onLayout}
         onProgress={this.onProgress}
         onError={this.onError}
         tintColor={tintColor}
